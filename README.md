@@ -45,7 +45,10 @@ No install, no config file, no signup. Stop with `Ctrl+C`.
 - **Node.js 18+**
 - **`adb`** on your `PATH` (install via [Android Platform Tools](https://developer.android.com/tools/releases/platform-tools))
 - A USB-connected Android phone with **USB debugging** enabled in Developer Options
-- On **Linux** only: `xclip` (`sudo apt install xclip` on Debian/Ubuntu)
+- On **Linux** only: `xclip`
+  - Debian / Ubuntu: `sudo apt install xclip`
+  - Fedora: `sudo dnf install xclip`
+  - Arch: `sudo pacman -S xclip`
 
 ## Supported platforms
 
@@ -68,7 +71,7 @@ That's the whole app.
 
 **What gets captured?** Whatever your phone saves into its screenshot folder. `droid-clip` probes the common paths at startup (`/sdcard/Pictures/Screenshots/` for Pixel/stock, `/sdcard/DCIM/Screenshots/` for Samsung, `/sdcard/Screenshots/` for some older ROMs) and uses whichever one your device has. If your phone stores them somewhere else, open an issue with your model name and we'll add the path.
 
-**Does it send anything to the cloud?** No. The screenshot goes phone → USB → `/tmp/droid-clip/` → your clipboard. That's it.
+**Does it send anything to the cloud?** No. The screenshot goes phone → USB → your OS temp dir (`/tmp/droid-clip/` on macOS/Linux, `%TEMP%\droid-clip\` on Windows) → your clipboard. That's it.
 
 **Wireless ADB?** If your phone is paired over Wi-Fi ADB, it works exactly the same. `adb` is `adb`.
 
