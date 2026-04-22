@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Auto-copies new Android screenshots to your laptop clipboard over ADB. Paste into any AI tool.",
   "bin": {
-    "droid-clip": "./bin/droid-clip.js"
+    "droid-clip": "bin/droid-clip.js"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -39,7 +39,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Matzo02/droid-clip.git"
+    "url": "git+https://github.com/Matzo02/droid-clip.git"
   },
   "bugs": {
     "url": "https://github.com/Matzo02/droid-clip/issues"
