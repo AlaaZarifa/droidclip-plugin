@@ -1,0 +1,56 @@
+{
+  "name": "droid-clip",
+  "version": "0.1.0",
+  "description": "Auto-copies new Android screenshots to your laptop clipboard over ADB. Paste into any AI tool.",
+  "bin": {
+    "droid-clip": "./bin/droid-clip.js"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node ./bin/droid-clip.js",
+    "dev": "tsc --watch",
+    "prepublishOnly": "tsc"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "android",
+    "adb",
+    "screenshot",
+    "clipboard",
+    "ai",
+    "claude",
+    "chatgpt",
+    "cursor",
+    "react-native",
+    "expo"
+  ],
+  "author": "Ishwaq Ekhande",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Matzo02/droid-clip.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Matzo02/droid-clip/issues"
+  },
+  "homepage": "https://github.com/Matzo02/droid-clip#readme",
+  "dependencies": {
+    "node-notifier": "^10.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/node-notifier": "^8.0.5",
+    "typescript": "^5.3.3"
+  }
+}
