@@ -1,6 +1,6 @@
 // Thin wrappers around the two `adb` invocations the daemon needs.
 // We use execFile (not exec) so arguments are passed as an array and there's
-// no shell interpolation — keeps filenames with spaces / quotes safe.
+// no shell interpolation. That keeps filenames with spaces / quotes safe.
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -16,7 +16,7 @@ const execFileAsync = promisify(execFile);
 // Cached result of the directory probe. Populated on the first successful
 // call and reused for the lifetime of the daemon. If resolution fails (phone
 // not connected yet, no candidate dir exists), we leave this null so the
-// next call retries — this is what keeps us silent-retrying across a
+// next call retries. That's what keeps us silent-retrying across a
 // phone plug/unplug cycle.
 let resolvedDir: string | null = null;
 
@@ -25,7 +25,7 @@ let resolvedDir: string | null = null;
  * returns the first one that exists. Caches the result, so after the first
  * success this is just a cheap property read.
  *
- * Throws if adb is unreachable or none of the candidates exist — callers
+ * Throws if adb is unreachable or none of the candidates exist. Callers
  * swallow the throw and retry on the next poll tick.
  */
 async function resolveScreenshotDir(): Promise<string> {
@@ -35,7 +35,7 @@ async function resolveScreenshotDir(): Promise<string> {
     try {
       // `ls -d` prints the dir name and exits 0 iff it exists. If the path
       // is missing, adb propagates ls's non-zero exit and execFileAsync
-      // rejects — we catch and try the next candidate.
+      // rejects, so we catch and try the next candidate.
       await execFileAsync('adb', ['shell', 'ls', '-d', candidate]);
       resolvedDir = candidate;
       console.log(`[droid-clip] using screenshot dir: ${candidate}`);
@@ -56,16 +56,16 @@ async function resolveScreenshotDir(): Promise<string> {
  * Returns the filename (basename only, no path) of the most recent screenshot
  * on the phone, or null if the directory is empty.
  *
- * Throws if adb itself fails — the caller treats every throw as "phone
+ * Throws if adb itself fails. The caller treats every throw as "phone
  * temporarily unreachable" and just retries on the next tick.
  */
 export async function adbLatest(): Promise<string | null> {
   const dir = await resolveScreenshotDir();
 
   // `ls -t` on Android's toybox sorts by mtime, newest first.
-  // We deliberately do NOT pipe to `head -n 1`: relying on the Android shell
-  // to support pipelines / head is fragile across vendors and Android
-  // versions, and the listing is tiny anyway — we filter in JS.
+  // We don't pipe to `head -n 1` because relying on the Android shell to
+  // support pipelines / head is fragile across vendors and Android versions,
+  // and the listing is tiny anyway, so we just filter in JS.
   const { stdout } = await execFileAsync('adb', ['shell', 'ls', '-t', dir]);
 
   // Walk the output top-down and pick the first entry whose extension looks

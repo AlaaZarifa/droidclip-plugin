@@ -1,4 +1,4 @@
-// Zero-config by design — everything the daemon needs lives here as a constant.
+// Zero-config by design. Everything the daemon needs lives here as a constant.
 // If someone asks "can I change the screenshot path?", the answer is "fork it
 // and edit this file" until there is a real demand for a config file.
 
@@ -8,7 +8,7 @@ import path from 'node:path';
 // Candidate screenshot directories, probed in order at startup. The daemon
 // picks the first one that actually exists on the connected device.
 //
-// This keeps us zero-config across OEMs — Pixel / stock Android / OnePlus
+// This keeps us zero-config across OEMs. Pixel / stock Android / OnePlus
 // tend to use /sdcard/Pictures/Screenshots, Samsung One UI uses
 // /sdcard/DCIM/Screenshots, older / less common ROMs drop them at the root.
 // If your phone stores them elsewhere, add the path here and open a PR.

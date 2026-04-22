@@ -4,8 +4,8 @@
 import notifier from 'node-notifier';
 
 /**
- * Fire-and-forget desktop notification. We intentionally don't await the
- * notifier callback or throw on failure — a missed toast (headless CI,
+ * Fire-and-forget desktop notification. We don't await the notifier
+ * callback or throw on failure. A missed toast (headless CI,
  * Do-Not-Disturb, locked screen) should never take the daemon down.
  */
 export function notify(title: string, message: string): void {

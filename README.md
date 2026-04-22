@@ -30,7 +30,7 @@ Take a screenshot on your USB-connected Android phone and within ~1 second it la
 
 Mobile devs (especially Expo / React Native) hit UI bugs on-device that need AI debugging help. The usual flow is 30–60s of friction per screenshot: take it → AirDrop / email / drag it over → find the file → drag it into chat. `droid-clip` cuts that to one `Cmd+V` / `Ctrl+V`.
 
-The clipboard is deliberately the integration point. It works with every paste-capable tool out there, no MCP / plugin support required on the AI side.
+The clipboard is the integration point on purpose. Every paste-capable tool accepts images, so this works with all of them without needing any plugin or MCP support on the AI side.
 
 ## Install / Run
 
@@ -49,11 +49,11 @@ No install, no config file, no signup. Stop with `Ctrl+C`.
 
 ## Supported platforms
 
-| OS      | Status | Notes                          |
-|---------|--------|--------------------------------|
-| macOS   | ✅     | Uses `osascript`               |
-| Linux   | ✅     | X11 only, via `xclip`          |
-| Windows | ✅     | Uses PowerShell `-STA` mode    |
+| OS      | Status        | Notes                          |
+|---------|---------------|--------------------------------|
+| Windows | ✅ Tested     | PowerShell with `-STA` flag    |
+| macOS   | ⚠️ Unverified | Uses `osascript`. Should work, needs someone to confirm. |
+| Linux   | ⚠️ Unverified | X11 only, needs `xclip`. Wayland not supported. |
 
 ## Usage
 

@@ -1,7 +1,7 @@
 // Platform-specific clipboard writes. Each branch shells out to the native
-// tool that the OS ships with — we deliberately avoid an npm clipboard
-// library because keeping the dep graph to `node-notifier` only matters for
-// `npx` cold-start time and supply-chain surface area.
+// tool that the OS already ships with. Avoiding an npm clipboard library
+// keeps the dep graph small, which matters for `npx` cold-start time and
+// supply-chain surface area.
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -10,8 +10,8 @@ const execFileAsync = promisify(execFile);
 
 /**
  * Copies the PNG/JPG file at `imagePath` onto the OS clipboard as an image
- * (not as a file path). Throws on failure — clipboard errors usually mean
- * platform misconfiguration (e.g. xclip missing) and the user should see
+ * (not as a file path). Throws on failure. Clipboard errors usually mean
+ * platform misconfiguration (e.g. xclip missing), and the user should see
  * the error rather than have it swallowed.
  */
 export async function copyImageToClipboard(imagePath: string): Promise<void> {
@@ -39,8 +39,8 @@ async function copyMac(imagePath: string): Promise<void> {
 }
 
 async function copyLinux(imagePath: string): Promise<void> {
-  // xclip is the de-facto X11 tool. Wayland sessions will need wl-copy —
-  // we'll add a runtime detection branch if/when someone reports it.
+  // xclip is the de-facto X11 tool. Wayland sessions will need wl-copy.
+  // I'll add a runtime detection branch if someone reports it.
   await execFileAsync('xclip', [
     '-selection',
     'clipboard',
