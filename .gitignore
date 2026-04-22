@@ -19,3 +19,6 @@ Thumbs.db
 *.tmp
 .env
 .env.local
+
+# Claude / AI spec file, kept local only
+CLAUDE.md
