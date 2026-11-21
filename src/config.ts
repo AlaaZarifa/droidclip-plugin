@@ -1,31 +1,42 @@
-// Zero-config by design. Everything the daemon needs lives here as a constant.
-// If someone asks "can I change the screenshot path?", the answer is "fork it
-// and edit this file" until there is a real demand for a config file.
-
-import os from 'node:os';
-import path from 'node:path';
-
-// Candidate screenshot directories, probed in order at startup. The daemon
-// picks the first one that actually exists on the connected device.
-//
-// This keeps us zero-config across OEMs. Pixel / stock Android / OnePlus
-// tend to use /sdcard/Pictures/Screenshots, Samsung One UI uses
-// /sdcard/DCIM/Screenshots, older / less common ROMs drop them at the root.
-// If your phone stores them elsewhere, add the path here and open a PR.
 export const SCREENSHOT_DIR_CANDIDATES = [
   '/sdcard/Pictures/Screenshots/',
   '/sdcard/DCIM/Screenshots/',
   '/sdcard/Screenshots/',
 ];
-
-// Polling interval. 1 second is the trade-off: fast enough to feel instant
-// to the user, slow enough that the adb round-trip cost is negligible.
+export const SCREENSHOT_EXTS = ['.png', '.jpg', '.jpeg'];
 export const POLL_INTERVAL_MS = 1_000;
 
-// Per-OS temp dir, plus a "droid-clip" subfolder so pulled screenshots don't
-// pollute the top-level temp directory and can be inspected if debugging.
-export const TMP_DIR = path.join(os.tmpdir(), 'droid-clip');
+export interface Options {
+  device?: string;
+  interval: number;
+  notify: boolean;
+  help: boolean;
+  managed?: boolean;
+}
 
-// File extensions we treat as screenshots. Most Androids write PNG, but some
-// screenshot tools / long-screenshot apps produce JPEG.
-export const SCREENSHOT_EXTS = ['.png', '.jpg', '.jpeg'];
+export function parseOptions(args: string[]): Options {
+  const options: Options = { interval: POLL_INTERVAL_MS, notify: false, help: false };
+  for (let i = 0; i < args.length; i++) {
+    switch (args[i]) {
+      case '--device':
+        options.device = args[++i];
+        if (!options.device || options.device.startsWith('--')) throw new Error('--device requires an ADB serial.');
+        break;
+      case '--interval': {
+        const value = args[++i];
+        const milliseconds = Number(value);
+        if (!value || !Number.isInteger(milliseconds) || milliseconds < 250 || milliseconds > 60_000) {
+          throw new Error('--interval must be an integer from 250 to 60000 milliseconds.');
+        }
+        options.interval = milliseconds;
+        break;
+      }
+      case '--notify': options.notify = true; break;
+      case '--managed': options.managed = true; break;
+      case '--help':
+      case '-h': options.help = true; break;
+      default: throw new Error(`Unknown option: ${args[i]}. Use --help.`);
+    }
+  }
+  return options;
+}

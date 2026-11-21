@@ -1,86 +1,150 @@
-// Entry point. Wires adb + clipboard + notifier into a single polling loop.
-// See CLAUDE.md for why this is polling-based rather than logcat/inotify.
-
 import fs from 'node:fs/promises';
-import { adbLatest, adbPull } from './adb.js';
+import os from 'node:os';
+import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
+import { AdbClient, listDevices, selectDevice } from './adb.js';
 import { copyImageToClipboard } from './clipboard.js';
-import { notify } from './notify.js';
-import { POLL_INTERVAL_MS, TMP_DIR } from './config.js';
+import { parseOptions } from './config.js';
+import { ScreenshotWatcher } from './watcher.js';
 
-// In-memory marker of "the newest screenshot filename we've observed so far".
-// Not persisted between runs on purpose: on restart we re-seed this to
-// whatever the phone's current latest is, and only copy screenshots taken
-// AFTER the daemon comes up. Otherwise every startup would spam the
-// clipboard with a stale screenshot from hours ago.
-let lastSeen: string | null = null;
+const managed = process.argv.slice(2).includes('--managed');
 
-// Set to true once we've successfully talked to the phone at least once.
-// Used only to control a first-connect log line. Avoids silent confusion
-// when the user starts the daemon with the phone not yet plugged in.
-let everConnected = false;
+function emit(event: Record<string, unknown>): void {
+  process.stdout.write(`${JSON.stringify({ timestamp: new Date().toISOString(), ...event })}\n`);
+}
 
-async function tick(): Promise<void> {
-  let latest: string | null;
-  try {
-    latest = await adbLatest();
-  } catch {
-    // adb errors during a tick are routine: phone unplugged, screen locked,
-    // USB glitch, adb server restarting. Stay quiet and retry next tick.
-    // That's the "graceful disconnect/reconnect" behavior in v1 scope.
-    return;
-  }
+const log = (message: string): void => {
+  if (managed) emit({ type: 'log', message });
+  else console.log(`[${new Date().toISOString()}] [droid-clip] ${message}`);
+};
 
-  if (!everConnected) {
-    everConnected = true;
-    console.log('[droid-clip] connected to device.');
-  }
-
-  if (!latest) return;
-
-  // First successful read seeds `lastSeen` without copying. See the comment
-  // on the declaration above for why.
-  if (lastSeen === null) {
-    lastSeen = latest;
-    return;
-  }
-
-  if (latest === lastSeen) return;
-
-  // New screenshot detected. Update the marker FIRST so a slow pull/copy
-  // can't cause us to re-trigger on the same file next tick.
-  lastSeen = latest;
-
-  try {
-    const localPath = await adbPull(latest);
-    await copyImageToClipboard(localPath);
-    notify('droid-clip', `Copied ${latest}`);
-    console.log(`[droid-clip] copied ${latest}`);
-  } catch (err) {
-    // Pull or clipboard errors are worth surfacing: usually a missing xclip,
-    // a phone disconnect mid-pull, or a genuine platform problem. We don't
-    // crash the loop; the next screenshot should work once the issue clears.
-    console.error(`[droid-clip] failed to handle ${latest}:`, err);
-  }
+function status(state: 'starting' | 'active' | 'waiting' | 'stopped', message: string): void {
+  if (managed) emit({ type: 'status', state, message });
+  else log(message);
 }
 
 async function main(): Promise<void> {
-  // Make sure our tmp subdir exists; adb pull won't create the parent dir.
-  await fs.mkdir(TMP_DIR, { recursive: true });
+  const options = parseOptions(process.argv.slice(2));
+  if (options.help) {
+    console.log(`Usage: droid-clip [--device SERIAL] [--interval MS] [--notify] [--managed]
 
-  console.log('[droid-clip] watching for screenshots… (Ctrl+C to stop)');
+Take a screenshot on your Android phone; paste the image on your computer.
+Reuses an existing authorised USB or wireless ADB connection.
 
-  // Recursive setTimeout (not setInterval) so a slow tick (e.g. a large
-  // screenshot pull over a crowded USB bus) can never cause overlapping
-  // runs of tick().
-  const loop = async (): Promise<void> => {
-    await tick();
-    setTimeout(loop, POLL_INTERVAL_MS);
+  --device SERIAL  Pin a device (required when multiple devices are connected)
+  --interval MS    Poll interval, 250–60000 ms (default 1000)
+  --notify         Also display desktop notifications (off by default)
+  --managed        JSON events; stop when the parent closes standard input
+  --help           Show this help
+
+Existing screenshots are ignored at startup. Stop with Ctrl+C.`);
+    return;
+  }
+
+  const controller = new AbortController();
+  const stop = (): void => controller.abort();
+  process.on('SIGINT', stop);
+  process.on('SIGTERM', stop);
+  if (options.managed) {
+    // The IDE owns this pipe. Closing the IDE must stop its watcher, even if
+    // no explicit stop signal reaches us. Never apply this to normal CLI use.
+    process.stdin.on('end', stop);
+    process.stdin.on('error', stop);
+    process.stdout.on('error', stop);
+    process.stdin.resume();
+  }
+  const sleep = async (milliseconds: number): Promise<void> => {
+    await delay(milliseconds, undefined, { signal: controller.signal });
   };
-
-  await loop();
+  let temporaryDirectory: string | undefined;
+  let lastError = '';
+  let failures = 0;
+  let connected = false;
+  let watcher: ScreenshotWatcher | undefined;
+  try {
+    temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'droid-clip-'));
+    const directory = temporaryDirectory;
+    status('starting', `watching for screenshots every ${options.interval} ms (Ctrl+C to stop)`);
+    while (!controller.signal.aborted) {
+      try {
+        if (!watcher) {
+          const device = selectDevice(await listDevices(controller.signal), options.device);
+          const adb = new AdbClient(device.serial, controller.signal);
+          if (managed) emit({ type: 'device', serial: device.serial, model: device.model ?? 'Android' });
+          log(`selected ${device.model ?? 'Android'} [${device.serial}]; all ADB operations target this device`);
+          watcher = new ScreenshotWatcher({
+            list: () => adb.listScreenshots(),
+            stat: (remotePath) => adb.stat(remotePath),
+            sleep,
+            log,
+            copy: async (screenshot) => {
+              // A fixed, private local name avoids interpreting Android filenames
+              // as host paths. Operations never overlap.
+              const local = path.join(directory, `screenshot${path.posix.extname(screenshot.remotePath).toLowerCase()}`);
+              const started = performance.now();
+              try {
+                await adb.pull(screenshot, local);
+                const transferred = performance.now();
+                controller.signal.throwIfAborted();
+                await copyImageToClipboard(local, controller.signal);
+                controller.signal.throwIfAborted();
+                log(`transferred ${screenshot.size} bytes in ${Math.round(transferred - started)} ms; clipboard ready in ${Math.round(performance.now() - transferred)} ms`);
+              } finally {
+                await fs.rm(local, { force: true }).catch(() => log('temporary file cleanup deferred until shutdown'));
+              }
+              if (options.notify && !controller.signal.aborted) {
+                // A notification failure must never retry an already successful
+                // clipboard write. Notifications are optional presentation only.
+                try {
+                  const { notify } = await import('./notify.js');
+                  notify('droid-clip', `Copied ${path.posix.basename(screenshot.remotePath)}`);
+                } catch {
+                  log('desktop notification unavailable; clipboard is ready');
+                }
+              }
+            },
+          });
+        }
+        await watcher.tick();
+        controller.signal.throwIfAborted();
+        if (!connected) status('active', lastError ? 'connection/processing recovered; watching the same device' : 'connected; watcher ready');
+        connected = true;
+        failures = 0;
+        lastError = '';
+      } catch (error) {
+        if (controller.signal.aborted) break;
+        const message = error instanceof Error ? error.message : String(error);
+        if (message !== lastError) {
+          status('waiting', `waiting/retrying: ${message}`);
+          log('Pending screenshots are retained. For wireless ADB, keep the phone on the same network and Wireless debugging enabled.');
+        }
+        connected = false;
+        lastError = message;
+        failures++;
+      }
+      await sleep(failures ? Math.min(15_000, Math.max(options.interval, 1_000) * 2 ** Math.min(failures - 1, 4)) : options.interval);
+    }
+  } catch (error) {
+    if (!controller.signal.aborted) throw error;
+  } finally {
+    try {
+      if (temporaryDirectory) await fs.rm(temporaryDirectory, { recursive: true, force: true });
+    } finally {
+      process.removeListener('SIGINT', stop);
+      process.removeListener('SIGTERM', stop);
+      if (options.managed) {
+        process.stdin.removeListener('end', stop);
+        process.stdin.removeListener('error', stop);
+        process.stdin.destroy();
+      }
+    }
+    if (controller.signal.aborted) status('stopped', 'stopped; temporary files removed');
+  }
 }
 
-main().catch((err) => {
-  console.error('[droid-clip] fatal:', err);
-  process.exit(1);
+main().catch((error) => {
+  const message = error instanceof Error ? error.message : String(error);
+  if (managed) emit({ type: 'error', message });
+  else console.error('[droid-clip] fatal:', message);
+  process.exitCode = 1;
 });

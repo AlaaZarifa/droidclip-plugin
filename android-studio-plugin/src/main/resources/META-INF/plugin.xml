@@ -1,0 +1,28 @@
+<idea-plugin>
+  <id>dev.droidclip.studio</id>
+  <name>DroidClip Plugin</name>
+  <version>0.1.1</version>
+  <vendor url="https://github.com/AlaaZarifa">Alaa Abuzarifa</vendor>
+  <description><![CDATA[
+    Toggle Android screenshot copying from the Android Studio status bar. Built by Alaa Abuzarifa
+    on <a href="https://github.com/Matzo02/droid-clip">droid-clip</a> by Ishwaq Ekhande (Matzo02).
+    Includes macOS clipboard and Samsung screenshot fixes. Requires Node.js 18+ and ADB.
+  ]]></description>
+  <idea-version since-build="261" until-build="261.*"/>
+  <depends>com.intellij.modules.platform</depends>
+  <extensions defaultExtensionNs="com.intellij">
+    <statusBarWidgetFactory id="DroidClip" implementation="dev.droidclip.studio.DroidClipWidgetFactory"/>
+    <applicationConfigurable parentId="tools" id="dev.droidclip.studio.settings"
+        instance="dev.droidclip.studio.DroidClipConfigurable" displayName="DroidClip Plugin"/>
+    <notificationGroup id="DroidClip" displayType="BALLOON" isLogByDefault="true"/>
+  </extensions>
+  <actions>
+    <group id="DroidClip.Tools" text="DroidClip Plugin" popup="true" icon="/icons/droidClip.svg">
+      <add-to-group group-id="ToolsMenu" anchor="last"/>
+      <action id="DroidClip.Toggle" class="dev.droidclip.studio.ToggleDroidClipAction"
+          text="Switch Droid Clip On" description="Switch screenshot sharing on or off" icon="/icons/droidClip.svg"/>
+      <action id="DroidClip.Settings" class="dev.droidclip.studio.DroidClipSettingsAction"
+          text="DroidClip Plugin Settings…" description="Configure optional executable paths and device selection"/>
+    </group>
+  </actions>
+</idea-plugin>

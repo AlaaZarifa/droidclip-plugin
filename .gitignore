@@ -22,3 +22,36 @@ Thumbs.db
 
 # Claude / AI spec file, kept local only
 CLAUDE.md
+
+# Generated builds and machine settings
+build/
+.gradle/
+out/
+__pycache__/
+*.pyc
+*.iml
+local.properties
+.npmrc
+.env.*
+!.env.example
+
+# Credentials, signing keys, and device pairing
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.key
+*.pem
+adbkey
+adbkey.pub
+adb_known_hosts.pb
+
+# Local recordings, captures, archives and diagnostics
+*.mov
+*.mp4
+*.m4v
+*.zip
+*.tgz
+captures/
+recordings/
+diagnostics/

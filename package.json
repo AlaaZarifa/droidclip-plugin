@@ -11,14 +11,16 @@
     "build": "tsc",
     "start": "node ./bin/droid-clip.js",
     "dev": "tsc --watch",
-    "prepublishOnly": "tsc"
+    "prepublishOnly": "tsc",
+    "test": "npm run build && node --test"
   },
   "files": [
     "dist",
     "bin",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "MACOS.md"
   ],
   "engines": {
     "node": ">=18"
@@ -39,12 +41,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Matzo02/droid-clip.git"
+    "url": "git+https://github.com/AlaaZarifa/droidclip-plugin.git"
   },
   "bugs": {
-    "url": "https://github.com/Matzo02/droid-clip/issues"
+    "url": "https://github.com/AlaaZarifa/droidclip-plugin/issues"
   },
-  "homepage": "https://github.com/Matzo02/droid-clip#readme",
+  "homepage": "https://github.com/AlaaZarifa/droidclip-plugin",
   "dependencies": {
     "node-notifier": "^10.0.1"
   },
@@ -52,5 +54,11 @@
     "@types/node": "^20.11.0",
     "@types/node-notifier": "^8.0.5",
     "typescript": "^5.3.3"
+  },
+  "private": true,
+  "overrides": {
+    "node-notifier": {
+      "uuid": "11.1.1"
+    }
   }
 }
